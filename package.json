@@ -1,0 +1,25 @@
+{
+  "name": "bilibili-live-danmu",
+  "version": "0.1.0",
+  "description": "bilibili直播弹幕获取",
+  "main": "dist/danmu.js",
+  "scripts": {
+    "start": "ts-node src/example.ts",
+    "build": "npm run clean && npm run lint && tsc",
+    "lint": "tslint -c tslint.json -t verbose src/**/*.ts",
+    "clean": "rimraf dist/*"
+  },
+  "repository": "https://github.com/beilunyang/bilibili-live-danmu.git",
+  "author": "beilunyang <786220806@qq.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^8.0.25",
+    "rimraf": "^2.6.1",
+    "tslint": "^5.7.0"
+  },
+  "dependencies": {
+    "axios": "^0.16.2",
+    "ts-node": "^3.3.0",
+    "typescript": "^2.4.2"
+  }
+}
