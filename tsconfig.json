@@ -2,17 +2,19 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es5",
-    "noImplicitAny": true,
     "moduleResolution": "node",
+    "noImplicitAny": true,
+    "strictNullChecks": true,
     "sourceMap": true,
     "removeComments": true,
-    "outDir": "dist",
+    "outDir": "lib",
+    "declarationDir": "lib/types",
     "pretty": true,
     "declaration": true,
-    "declarationDir": "dist/",
     "lib": [
       "es2015"
-    ]
+    ],
+    "noUnusedLocals": true
   },
   "include": [
     "src/**/*.ts"

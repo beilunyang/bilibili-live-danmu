@@ -2,11 +2,12 @@
  * @Author: beilunyang
  * @Date: 2017-08-10 10:20:25
  * @Last Modified by: beilunyang
- * @Last Modified time: 2017-08-27 21:04:20
+ * @Last Modified time: 2017-09-27 17:41:53
  */
 
 import axios from "axios";
 import * as net from "net";
+import * as stream from "stream";
 import * as helper from "./util";
 
 /**
@@ -15,12 +16,11 @@ import * as helper from "./util";
  * @export
  * @class Danmu
  */
-export default class Danmu {
+export class Danmu extends stream.PassThrough {
   private CIDInfoUrl: string = "http://live.bilibili.com/api/player?id=cid:";
   private roomId: number;
   private chatPort: number = 788;
   private protocolVersion: number = 1;
-  private connected: boolean = false;
   private client: net.Socket;
   private chatHost: string = "livecmt-1.bilibili.com";
   private uid: number = Math.floor(100000000000000.0 + 200000000000000.0 * Math.random());
@@ -28,13 +28,15 @@ export default class Danmu {
     timeout: 2000,
   });
   private okFlag: Buffer = Buffer.from("00000010001000010000000800000001", "hex");
-  private cache: Buffer | null = null;
+  private danmuTransform = new helper.DanmuTransform();
+
   /**
    * Creates an instance of Danmu.
    * @param {number} roomId
    * @memberof Danmu
    */
   constructor(roomId: number) {
+    super();
     this.roomId = roomId;
   }
 
@@ -45,49 +47,39 @@ export default class Danmu {
    * @memberof Danmu
    */
   public async connectServer(): Promise<void> {
-    helper.log("正在解析真实roomId&server address");
+    helper.log("正在解析真实房间ID和服务器地址");
     const res = await this.http.get(`http://live.bilibili.com/${this.roomId}`);
     const html = res.data;
     this.roomId = html.match(/var\sROOMID\s=\s(\d+?);/)[1];
-    helper.log(`真实roomId是${this.roomId}`);
+    helper.log(`真实房间ID是${this.roomId}`);
     const result = await this.http.get(`${this.CIDInfoUrl}${this.roomId}`);
     const xml = result.data;
     this.chatHost = xml.match(/<server>(\S+?)<\/server>/)[1];
-    helper.log(`server address是${this.chatHost}`);
+    helper.log(`服务器地址是${this.chatHost}`);
     this.client = net.createConnection(this.chatPort, this.chatHost);
     this.client.on("connect", async () => {
       if (await this.joinChannel(this.roomId)) {
         helper.log("正在进入房间");
       }
     });
-    this.client.on("data", (data: Buffer): void => {
+
+    this.client.once("data", (data: Buffer): void => {
       if (data.equals(this.okFlag)) {
-        this.connected = true;
         this.heartBeatLoop();
         helper.log("进入房间成功");
-        return helper.log("开始获取弹幕");
+        helper.log("开始获取弹幕");
+        this.client.pipe(this.danmuTransform).pipe(this);
+      } else {
+        helper.log("进入房间失败");
+        this.client.end();
       }
-      if (this.connected) {
-        if (this.cache) {
-          const msg = helper.unpacket(Buffer.concat([this.cache, data]));
-          this.cache = null;
-          return helper.log(msg.data);
-        }
-        // 最大packet长度，此时会存在数据包截断，需要放入缓冲区等待下一个packet来补全
-        if (data.byteLength === 1452) {
-          this.cache = data;
-          return;
-        }
-        const msg = helper.unpacket(data);
-        return helper.log(msg.data);
-      }
-      helper.log("进入房间失败");
-      this.client.end();
     });
+
     this.client.on("end", () => {
       helper.log("结束连接");
       process.exit();
     });
+
   }
 
   /**
@@ -146,5 +138,6 @@ export default class Danmu {
       });
     });
   }
-
 }
+
+export default Danmu;
